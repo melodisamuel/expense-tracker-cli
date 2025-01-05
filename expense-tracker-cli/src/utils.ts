@@ -15,3 +15,4 @@ export const readExpenses = (): Expense[] => {
 export const writeExpenses = (expenses: Expense[]): void => {
     fs.writeFileSync(DATA_FILE, JSON.stringify(expenses, null, 2));
 }
+
