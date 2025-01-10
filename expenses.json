@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "description": "Groceries",
+    "amount": 150.5,
+    "date": "2025-01-08T08:57:02.745Z",
+    "category": "Food"
+  },
+  {
+    "id": 2,
+    "description": "Automobile",
+    "amount": 150.5,
+    "date": "2025-01-08T09:00:07.794Z",
+    "category": "Caberator"
+  }
+]
