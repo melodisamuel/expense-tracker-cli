@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 
-import sequelize from "./database";
-import Expense from "./expenses";
+import sequelize from "./database.js";
+import Expense from "./models/expenses.js";
+import "reflect-metadata";
 
-// Initialise database connecttions and sync models 
+
+// Initialise database connecttions and sync models
 (async () => {
-  try{
+  try {
     await sequelize.sync({ force: true });
     console.log("Database synchronized succesfully.");
   } catch (error) {
@@ -13,85 +15,97 @@ import Expense from "./expenses";
   }
 })();
 
-
-import { Command } from "commander"
+import { Command } from "commander";
 // import { Expense } from './expenses'
 
-
 const program = new Command();
-import { readExpenses, writeExpenses } from './utils'
+import { readExpenses, writeExpenses } from "./utils.js";
 
-
- const addExpense = (
+const addExpense = async (
   description: string,
   amount: number,
   category?: string
-): void => {
-  const expenses = readExpenses();
-  const newExpense = {
-    id: expenses.length + 1,
-    description,
-    amount,
-    date: new Date().toISOString(),
-    category,
-  };
-  expenses.push(newExpense);
-  writeExpenses(expenses);
-  console.log(`Expense added succesfully (ID: ${newExpense})`);
+): Promise<void> => {
+  try{
+    const newExpense = await Expense.create({
+      description,
+      amount,
+      date: new Date().toISOString(),
+      category,
+    });
+    console.log(`Expense added succesfully (ID: ${newExpense.id})`);
+  } catch (error) {
+    console.error('Error adding expense');
+  }
+}
+
+const listExpense = async (): Promise<void> => {
+
+  try{
+    const expenses = await readExpenses();
+    console.log('ID Date     Description   Amount');
+    expenses.forEach((expense) => {
+      const formatedDate = expense.date.toISOString().slice(0, 10);
+      console.log(`${formatedDate} ${expense.description} $${expense.amount}`);
+    })
+  } catch (error) {
+    console.error('Error listening expenses' );
+  }
+
 };
 
- const listExpense = (): void => {
-  const expenses = readExpenses();
-  console.log("ID Date     Description Amount");
-  expenses.forEach((expense) => {
-    console.log(
-      `${expense.id} ${expense.date.slice(0, 10)} ${expense.description}  $${
-        expense.amount
-      }`
-    );
-  });
-};
-
- const deleteExpense = (id: number): void => {
-  const expenses = readExpenses();
-  const updatedExpenses = expenses.filter((expense) => expense.id !== id);
-  writeExpenses(updatedExpenses);
-  console.log(`Expenses deleted successfully.`);
-};
-
- const updateExpense = (
-  id: number,
-  description: string,
-  amount: number
-): void => {
-  const expenses = readExpenses();
-  const expense = expenses.find((expense) => expense.id === id);
-  if (expense) {
-    expense.description = description;
-    expense.amount = amount;
-    writeExpenses(expenses);
-    console.log(`Expense with ID ${id} updated successfully.`);
-  } else {
-    console.log(`Expense with ID ${id} not found.`);
+const deleteExpense = async (id: number): Promise <void> => {
+  try{
+    const result = await Expense.destroy ({where: { id }});
+    if(result) {
+      console.log(`Expense with ID ${id} deleted succesfully.`);
+    } else {
+      console.log(`Expense with ID ${id} not found`);
+    }
+  } catch (error) {
+    console.error('Error deleting expense', error);
   }
 };
 
- const summary = (month?: number): void => {
-  const expenses = readExpenses();
-  const filterdExpenses = month
-    ? expenses.filter(
-        (expense) => new Date(expense.date).getMonth() + 1 === month
-      )
-    : expenses;
-
-  const total = filterdExpenses.reduce(
-    (sum, expense) => sum + expense.amount,
-    0
-  );
-  console.log(`Total expenses${month ? ` for month ${month}` : ""}: `);
+const updateExpense  = async  (
+  id: number,
+  description: string,
+  amount: number
+): Promise <void> => { 
+  try{
+    const expense = await Expense.findByPk(id);
+    if(expense) {
+      expense.description = description;
+      expense.amount = amount;
+      await expense.save();
+      console.log(`Expense with ID: ${id} updated successfully.`);
+    } else {
+      console.log(`Expense with ID: ${id} not found.`);
+    }
+  } catch (error) {
+    console.error('Error updating expense:', error);
+  }
 };
 
-
+const summary = async (month?: number): Promise <void> => {
+  try{
+    const expenses = await readExpenses();
+    const filterdExpenses = month
+      ? expenses.filter(
+          (expense) => new Date(expense.date).getMonth() + 1 === month
+        )
+      : expenses;
+  
+    const total = filterdExpenses.reduce(
+      (sum, expense) => sum + expense.amount,
+      0
+    );
+    console.log(`Total expenses${month ? ` for month ${month}` : ""}: `);
+  } catch (error) {
+    console.log('Error generating summary:', error);
+  }
+  
+};
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -105,11 +119,11 @@ switch (command) {
     if (!description || isNaN(amount)) {
       console.error("Usage: add <description> <amount> [category]");
     } else {
-      addExpense(description, amount, category);
+      await addExpense(description, amount, category);
     }
     break;
   case "list":
-    listExpense();
+    await listExpense();
     break;
   case "delete":
     const idToDelete = parseInt(args[1], 10);
@@ -117,7 +131,7 @@ switch (command) {
     if (isNaN(idToDelete)) {
       console.error("Usage: delete <id>");
     } else {
-      deleteExpense(idToDelete);
+      await deleteExpense(idToDelete);
     }
     break;
 
@@ -128,7 +142,7 @@ switch (command) {
     if (isNaN(idToUpdate) || !newDescription || isNaN(newAmount)) {
       console.error("Usage: update <id> <newDescription> <newAmount>");
     } else {
-      updateExpense(idToUpdate, newDescription, newAmount);
+      await updateExpense(idToUpdate, newDescription, newAmount);
     }
     break;
 
@@ -138,7 +152,7 @@ switch (command) {
     if (month && (month < 1 || month > 12)) {
       console.error("Usage: summary [month]");
     } else {
-      summary(month);
+      await summary(month);
     }
     break;
 
@@ -146,5 +160,5 @@ switch (command) {
     console.error("Unkown command");
     console.error("Available commands: add, list, delete, update, summary");
 
-    break
+    break;
 }

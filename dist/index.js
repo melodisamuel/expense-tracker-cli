@@ -1,55 +1,91 @@
 #!/usr/bin/env node
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const commander_1 = require("commander");
-const program = new commander_1.Command();
-const utils_1 = require("./utils");
-const addExpense = (description, amount, category) => {
-    const expenses = (0, utils_1.readExpenses)();
-    const newExpense = {
-        id: expenses.length + 1,
-        description,
-        amount,
-        date: new Date().toISOString(),
-        category,
-    };
-    expenses.push(newExpense);
-    (0, utils_1.writeExpenses)(expenses);
-    console.log(`Expense added succesfully (ID: ${newExpense})`);
-};
-const listExpense = () => {
-    const expenses = (0, utils_1.readExpenses)();
-    console.log("ID Date     Description Amount");
-    expenses.forEach((expense) => {
-        console.log(`${expense.id} ${expense.date.slice(0, 10)} ${expense.description}  $${expense.amount}`);
-    });
-};
-const deleteExpense = (id) => {
-    const expenses = (0, utils_1.readExpenses)();
-    const updatedExpenses = expenses.filter((expense) => expense.id !== id);
-    (0, utils_1.writeExpenses)(updatedExpenses);
-    console.log(`Expenses deleted successfully.`);
-};
-const updateExpense = (id, description, amount) => {
-    const expenses = (0, utils_1.readExpenses)();
-    const expense = expenses.find((expense) => expense.id === id);
-    if (expense) {
-        expense.description = description;
-        expense.amount = amount;
-        (0, utils_1.writeExpenses)(expenses);
-        console.log(`Expense with ID ${id} updated successfully.`);
+import sequelize from "./database.js";
+import Expense from "./models/expenses.js";
+import "reflect-metadata";
+// Initialise database connecttions and sync models
+(async () => {
+    try {
+        await sequelize.sync({ force: true });
+        console.log("Database synchronized succesfully.");
     }
-    else {
-        console.log(`Expense with ID ${id} not found.`);
+    catch (error) {
+        console.error("Error synchronizing database:", error);
+    }
+})();
+import { Command } from "commander";
+// import { Expense } from './expenses'
+const program = new Command();
+import { readExpenses } from "./utils.js";
+const addExpense = async (description, amount, category) => {
+    try {
+        const newExpense = await Expense.create({
+            description,
+            amount,
+            date: new Date().toISOString(),
+            category,
+        });
+        console.log(`Expense added succesfully (ID: ${newExpense.id})`);
+    }
+    catch (error) {
+        console.error('Error adding expense');
     }
 };
-const summary = (month) => {
-    const expenses = (0, utils_1.readExpenses)();
-    const filterdExpenses = month
-        ? expenses.filter((expense) => new Date(expense.date).getMonth() + 1 === month)
-        : expenses;
-    const total = filterdExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-    console.log(`Total expenses${month ? ` for month ${month}` : ""}: `);
+const listExpense = async () => {
+    try {
+        const expenses = await readExpenses();
+        console.log('ID Date     Description   Amount');
+        expenses.forEach((expense) => {
+            const formatedDate = expense.date.toISOString().slice(0, 10);
+            console.log(`${formatedDate} ${expense.description} $${expense.amount}`);
+        });
+    }
+    catch (error) {
+        console.error('Error listening expenses');
+    }
+};
+const deleteExpense = async (id) => {
+    try {
+        const result = await Expense.destroy({ where: { id } });
+        if (result) {
+            console.log(`Expense with ID ${id} deleted succesfully.`);
+        }
+        else {
+            console.log(`Expense with ID ${id} not found`);
+        }
+    }
+    catch (error) {
+        console.error('Error deleting expense', error);
+    }
+};
+const updateExpense = async (id, description, amount) => {
+    try {
+        const expense = await Expense.findByPk(id);
+        if (expense) {
+            expense.description = description;
+            expense.amount = amount;
+            await expense.save();
+            console.log(`Expense with ID: ${id} updated successfully.`);
+        }
+        else {
+            console.log(`Expense with ID: ${id} not found.`);
+        }
+    }
+    catch (error) {
+        console.error('Error updating expense:', error);
+    }
+};
+const summary = async (month) => {
+    try {
+        const expenses = await readExpenses();
+        const filterdExpenses = month
+            ? expenses.filter((expense) => new Date(expense.date).getMonth() + 1 === month)
+            : expenses;
+        const total = filterdExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+        console.log(`Total expenses${month ? ` for month ${month}` : ""}: `);
+    }
+    catch (error) {
+        console.log('Error generating summary:', error);
+    }
 };
 const args = process.argv.slice(2);
 const command = args[0];
@@ -62,11 +98,11 @@ switch (command) {
             console.error("Usage: add <description> <amount> [category]");
         }
         else {
-            addExpense(description, amount, category);
+            await addExpense(description, amount, category);
         }
         break;
     case "list":
-        listExpense();
+        await listExpense();
         break;
     case "delete":
         const idToDelete = parseInt(args[1], 10);
@@ -74,7 +110,7 @@ switch (command) {
             console.error("Usage: delete <id>");
         }
         else {
-            deleteExpense(idToDelete);
+            await deleteExpense(idToDelete);
         }
         break;
     case "update":
@@ -85,7 +121,7 @@ switch (command) {
             console.error("Usage: update <id> <newDescription> <newAmount>");
         }
         else {
-            updateExpense(idToUpdate, newDescription, newAmount);
+            await updateExpense(idToUpdate, newDescription, newAmount);
         }
         break;
     case "summary":
@@ -94,7 +130,7 @@ switch (command) {
             console.error("Usage: summary [month]");
         }
         else {
-            summary(month);
+            await summary(month);
         }
         break;
     default:

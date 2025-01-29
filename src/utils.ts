@@ -1,33 +1,32 @@
-import fs from 'fs';
-import path from 'path';
+// import exp from 'constants';
+import  Expense  from './models/expenses.js';
 
-const filePath = path.resolve(__dirname, 'expenses.json');
-
-import { Expense } from './expenses';
-
-const DATA_FILE = './expenses.json';
-
- export function readExpenses(): Expense[] {
-
-    try{
-        if(!fs.existsSync('expenses.json')) {
-            fs.writeFileSync('expenses.json', JSON.stringify([]));
-            return [];
-        }
-        const data = fs.readFileSync('expenses.json', 'utf-8');
-        return data.trim() ? JSON.parse(data) : [];
+// Fetch all expenses from the database
+export async function readExpenses(): Promise<Expense[]> {
+    try {
+        const expenses = await Expense.findAll();
+        return expenses;
     } catch (error) {
-        console.log('Error reading expenses', error);
+        console.log('Error reading expenses from the database:', error);
         return [];
     }
-  
 }
 
- export function writeExpenses(expenses: Expense[]): void {
-    try{
-        fs.writeFileSync('expenses.json', JSON.stringify(expenses, null, 2));
+// Add or update expenses in the database
+export async function writeExpenses(expenses: Expense[]): Promise<void> {
+    try {
+        for (const expense of expenses) {
+            const [existingExpense] = await Expense.findOrCreate({
+                where: { id: expense.id },
+                defaults: expense as Partial<Expense>,
+            });
+
+            if (existingExpense) {
+                await existingExpense.update(expense);
+            }
+        }
+        console.log('Expenses written to the database successfully.');
     } catch (error) {
-        console.log('Failed to write to the expenses fiel:', error);
+        console.log('Failed to write to the database:', error);
     }
 }
-
