@@ -1,6 +1,10 @@
 import { Table, Column, Model, DataType } from "sequelize-typescript";
 
-@Table({ tableName: "expenses", freezeTableName: true, timestamps: true })
+@Table({
+  tableName: "expenses",
+  freezeTableName: true,
+  timestamps: false, // Disable createdAt and updatedAt
+})
 export default class Expense extends Model {
   @Column({
     type: DataType.STRING,

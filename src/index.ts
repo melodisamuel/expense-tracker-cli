@@ -4,6 +4,7 @@ import {sequelize} from "./database.js";
 import Expense from "./models/expenses.js";
 import "reflect-metadata";
 import { Command } from "commander";
+import Table from 'cli-table3';
 
 const program = new Command();
 
@@ -37,15 +38,36 @@ const addExpense = async (
 };
 
 
-
 const listExpense = async (): Promise<void> => {
   try {
-    const expenses = await Expense.findAll(); // Fetch from the database
-    console.log('ID  Date       Description   Amount');
-    expenses.forEach((expense) => {
-      const formattedDate = expense.date.toISOString().slice(0, 10);
-      console.log(`${expense.id} ${formattedDate} ${expense.description} $${expense.amount}`);
+    const expenses = await Expense.findAll();
+
+    if (expenses.length === 0) {
+      console.log('No expenses found.');
+      return;
+    }
+
+    // Define table structure
+    const table = new Table({
+      head: ['ID', 'Date', 'Description', 'Amount'],
+      colWidths: [5, 15, 25, 10], // Adjust column widths as needed
     });
+
+    // Populate table with expenses
+    expenses.forEach((expense) => {
+      const formattedDate = expense.get('date')
+        ? new Date(expense.get('date')).toISOString().slice(0, 10)
+        : 'No date';
+
+      table.push([
+        expense.get('id'),
+        formattedDate,
+        expense.get('description'),
+        `$${expense.get('amount')}`,
+      ]);
+    });
+
+    console.log(table.toString()); // Display table
   } catch (error) {
     console.error('Error listing expenses:', error);
   }

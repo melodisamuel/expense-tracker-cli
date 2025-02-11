@@ -44,6 +44,10 @@ __decorate([
     __metadata("design:type", Date)
 ], Expense.prototype, "date", void 0);
 Expense = __decorate([
-    Table({ tableName: "expenses", freezeTableName: true, timestamps: true })
+    Table({
+        tableName: "expenses",
+        freezeTableName: true,
+        timestamps: false, // Disable createdAt and updatedAt
+    })
 ], Expense);
 export default Expense;
