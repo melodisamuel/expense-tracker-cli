@@ -15,13 +15,10 @@ export async function readExpenses() {
 export async function writeExpenses(expenses) {
     try {
         for (const expense of expenses) {
-            const [existingExpense] = await Expense.findOrCreate({
+            await Expense.findOrCreate({
                 where: { id: expense.id },
                 defaults: expense,
             });
-            if (existingExpense) {
-                await existingExpense.update(expense);
-            }
         }
         console.log('Expenses written to the database successfully.');
     }

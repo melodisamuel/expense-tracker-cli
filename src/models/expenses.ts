@@ -1,16 +1,6 @@
-
 import { Table, Column, Model, DataType } from "sequelize-typescript";
-   
 
-// export interface Expense {
-//   id: number;
-//   description: string;
-//   amount: number;
-//   date: string;
-//   category?: string;
-// }
-
-@Table
+@Table({ tableName: "expenses", freezeTableName: true, timestamps: true })
 export default class Expense extends Model {
   @Column({
     type: DataType.STRING,
@@ -33,7 +23,7 @@ export default class Expense extends Model {
   @Column({
     type: DataType.DATE,
     allowNull: false,
-    defaultValue: DataType.NOW,
+    defaultValue: DataType.NOW, // ✅ Sets default at database level
   })
   date!: Date;
 }

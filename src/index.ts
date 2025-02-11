@@ -1,80 +1,77 @@
 #!/usr/bin/env node
 
-import sequelize from "./database.js";
+import {sequelize} from "./database.js";
 import Expense from "./models/expenses.js";
 import "reflect-metadata";
+import { Command } from "commander";
 
+const program = new Command();
 
-// Initialise database connecttions and sync models
+// Initialize database connections and sync models
 (async () => {
   try {
-    await sequelize.sync({ force: true });
-    console.log("Database synchronized succesfully.");
+    await sequelize.sync(); // Don't use { force: true } in production
+    console.log("Database synchronized successfully.");
   } catch (error) {
     console.error("Error synchronizing database:", error);
   }
 })();
-
-import { Command } from "commander";
-// import { Expense } from './expenses'
-
-const program = new Command();
-import { readExpenses, writeExpenses } from "./utils.js";
 
 const addExpense = async (
   description: string,
   amount: number,
   category?: string
 ): Promise<void> => {
-  try{
+  try {
+    console.log('Attempting to add expense to the database...');
     const newExpense = await Expense.create({
       description,
       amount,
       date: new Date().toISOString(),
       category,
     });
-    console.log(`Expense added succesfully (ID: ${newExpense.id})`);
+    console.log(`Expense added successfully (ID: ${newExpense.id})`);
   } catch (error) {
-    console.error('Error adding expense');
+    console.error('Error adding expense:', error);
   }
-}
+};
+
+
 
 const listExpense = async (): Promise<void> => {
-
-  try{
-    const expenses = await readExpenses();
-    console.log('ID Date     Description   Amount');
+  try {
+    const expenses = await Expense.findAll(); // Fetch from the database
+    console.log('ID  Date       Description   Amount');
     expenses.forEach((expense) => {
-      const formatedDate = expense.date.toISOString().slice(0, 10);
-      console.log(`${formatedDate} ${expense.description} $${expense.amount}`);
-    })
+      const formattedDate = expense.date.toISOString().slice(0, 10);
+      console.log(`${expense.id} ${formattedDate} ${expense.description} $${expense.amount}`);
+    });
   } catch (error) {
-    console.error('Error listening expenses' );
+    console.error('Error listing expenses:', error);
   }
-
 };
 
-const deleteExpense = async (id: number): Promise <void> => {
-  try{
-    const result = await Expense.destroy ({where: { id }});
-    if(result) {
-      console.log(`Expense with ID ${id} deleted succesfully.`);
+const deleteExpense = async (id: number): Promise<void> => {
+  try {
+    const result = await Expense.destroy({ where: { id } });
+    if (result) {
+      console.log(`Expense with ID ${id} deleted successfully.`);
     } else {
-      console.log(`Expense with ID ${id} not found`);
+      console.log(`Expense with ID ${id} not found.`);
     }
   } catch (error) {
-    console.error('Error deleting expense', error);
+    console.error('Error deleting expense:', error);
   }
 };
 
-const updateExpense  = async  (
+const updateExpense = async (
   id: number,
   description: string,
   amount: number
-): Promise <void> => { 
-  try{
+): Promise<void> => {
+  try {
     const expense = await Expense.findByPk(id);
-    if(expense) {
+    if (expense) {
       expense.description = description;
       expense.amount = amount;
       await expense.save();
@@ -87,24 +84,17 @@ const updateExpense  = async  (
   }
 };
 
-const summary = async (month?: number): Promise <void> => {
-  try{
-    const expenses = await readExpenses();
-    const filterdExpenses = month
-      ? expenses.filter(
-          (expense) => new Date(expense.date).getMonth() + 1 === month
-        )
-      : expenses;
-  
-    const total = filterdExpenses.reduce(
-      (sum, expense) => sum + expense.amount,
-      0
-    );
-    console.log(`Total expenses${month ? ` for month ${month}` : ""}: `);
+const summary = async (month?: number): Promise<void> => {
+  try {
+    const expenses = month
+      ? await Expense.findAll({ where: sequelize.where(sequelize.fn('MONTH', sequelize.col('date')), month) })
+      : await Expense.findAll();
+
+    const total = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+    console.log(`Total expenses${month ? ` for month ${month}` : ""}: $${total}`);
   } catch (error) {
     console.log('Error generating summary:', error);
   }
-  
 };
 
 const args = process.argv.slice(2);
@@ -119,12 +109,15 @@ switch (command) {
     if (!description || isNaN(amount)) {
       console.error("Usage: add <description> <amount> [category]");
     } else {
+      // Ensure this always sends the expense to the database
       await addExpense(description, amount, category);
     }
     break;
+
   case "list":
     await listExpense();
     break;
+
   case "delete":
     const idToDelete = parseInt(args[1], 10);
 
@@ -157,8 +150,7 @@ switch (command) {
     break;
 
   default:
-    console.error("Unkown command");
+    console.error("Unknown command");
     console.error("Available commands: add, list, delete, update, summary");
-
     break;
 }

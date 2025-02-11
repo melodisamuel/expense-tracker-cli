@@ -8,13 +8,6 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 import { Table, Column, Model, DataType } from "sequelize-typescript";
-// export interface Expense {
-//   id: number;
-//   description: string;
-//   amount: number;
-//   date: string;
-//   category?: string;
-// }
 let Expense = class Expense extends Model {
     description;
     amount;
@@ -46,11 +39,11 @@ __decorate([
     Column({
         type: DataType.DATE,
         allowNull: false,
-        defaultValue: DataType.NOW,
+        defaultValue: DataType.NOW, // ✅ Sets default at database level
     }),
     __metadata("design:type", Date)
 ], Expense.prototype, "date", void 0);
 Expense = __decorate([
-    Table
+    Table({ tableName: "expenses", freezeTableName: true, timestamps: true })
 ], Expense);
 export default Expense;
