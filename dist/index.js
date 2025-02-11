@@ -76,11 +76,8 @@ const deleteExpense = async (id) => {
 };
 const updateExpense = async (id, description, amount) => {
     try {
-        const expense = await Expense.findByPk(id);
-        if (expense) {
-            expense.description = description;
-            expense.amount = amount;
-            await expense.save();
+        const [updated] = await Expense.update({ description, amount }, { where: { id } });
+        if (updated) {
             console.log(`Expense with ID: ${id} updated successfully.`);
         }
         else {
@@ -88,7 +85,7 @@ const updateExpense = async (id, description, amount) => {
         }
     }
     catch (error) {
-        console.error('Error updating expense:', error);
+        console.error("Error updating expense:", error);
     }
 };
 const summary = async (month) => {

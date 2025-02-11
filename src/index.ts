@@ -86,25 +86,24 @@ const deleteExpense = async (id: number): Promise<void> => {
   }
 };
 
-const updateExpense = async (
-  id: number,
-  description: string,
-  amount: number
-): Promise<void> => {
+const updateExpense = async (id: number, description: string, amount: number): Promise<void> => {
   try {
-    const expense = await Expense.findByPk(id);
-    if (expense) {
-      expense.description = description;
-      expense.amount = amount;
-      await expense.save();
+    const [updated] = await Expense.update(
+      { description, amount },
+      { where: { id } }
+    );
+
+    if (updated) {
       console.log(`Expense with ID: ${id} updated successfully.`);
     } else {
       console.log(`Expense with ID: ${id} not found.`);
     }
   } catch (error) {
-    console.error('Error updating expense:', error);
+    console.error("Error updating expense:", error);
   }
 };
+
+
 
 const summary = async (month?: number): Promise<void> => {
   try {
